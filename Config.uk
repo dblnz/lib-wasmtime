@@ -1,0 +1,17 @@
+menuconfig LIBWASMTIME
+	bool "wasmtime: WebAssembly runtime"
+	depends on ARCH_X86_64
+	select LIBUKCARGO
+	select LIBMUSL
+	default n
+	help
+	  This library provides a WebAssembly runtime that is capable of
+	  running WebAssembly modules and components.
+
+if LIBWASMTIME
+
+config LIBWASMTIME_COMPONENT_MODEL
+	bool "Enable WebAssembly Component Model support"
+	default y
+
+endif

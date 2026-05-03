@@ -1,0 +1,25 @@
+[package]
+name = "lib-wasmtime"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+sha2 = { version = "0.10", default-features = false, features = ["force-soft"] }
+
+[dependencies.wasmtime]
+version = "43.0.1"
+default-features = false
+features = [
+    "runtime",
+    "component-model",
+    "custom-virtual-memory",
+    "custom-native-signals",
+]
+
+[features]
+default = ["component-model"]
+component-model = []
+
