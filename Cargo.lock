@@ -410,6 +410,7 @@ name = "lib-wasmtime"
 version = "0.1.0"
 dependencies = [
  "sha2",
+ "ukrust",
  "wasmtime",
 ]
 
@@ -695,6 +696,10 @@ name = "typenum"
 version = "1.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "40ce102ab67701b8526c123c1bab5cbe42d7040ccfd0f64af1a385808d2f43de"
+
+[[package]]
+name = "ukrust"
+version = "0.1.0"
 
 [[package]]
 name = "unicode-ident"

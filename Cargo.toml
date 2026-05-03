@@ -8,6 +8,7 @@ crate-type = ["staticlib"]
 
 [dependencies]
 sha2 = { version = "0.10", default-features = false, features = ["force-soft"] }
+ukrust = { path = "../unikraft-patched/lib/ukrust/" }
 
 [dependencies.wasmtime]
 version = "43.0.1"
