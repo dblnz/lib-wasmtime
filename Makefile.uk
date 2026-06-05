@@ -19,6 +19,12 @@ LIBUKWASMTIME_RUSTCFLAGS-y += \
 	-Zallow-features=alloc_error_handler,allocator_api,concat_idents,bench_black_box,global_asm,try_reserve
 
 ################################################################################
+# C include path for wasmtime-platform.h
+################################################################################
+LIBUKWASMTIME_CINCLUDES-y += -I$(LIBUKWASMTIME_BASE)/include
+
+################################################################################
 # Sources
 ################################################################################
 LIBUKWASMTIME_SRCS-y += $(LIBUKWASMTIME_BASE)/Cargo.toml
+LIBUKWASMTIME_SRCS-y += $(LIBUKWASMTIME_BASE)/platform.c

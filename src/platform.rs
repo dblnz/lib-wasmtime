@@ -1,14 +1,22 @@
-// Phase 2: Implement wasmtime platform hooks (wasmtime-platform.h)
+// Wasmtime platform hooks for Unikraft.
 //
-// Required C-ABI functions for wasmtime no_std:
+// The C-ABI functions required by wasmtime's no_std mode are implemented in
+// `platform.c` (at the library root). This file exists as documentation.
 //
-// Virtual memory:
+// The following function groups are provided:
+//
+// Virtual memory (custom-virtual-memory):
 //   wasmtime_mmap_new, wasmtime_mmap_remap, wasmtime_munmap,
-//   wasmtime_page_size, wasmtime_memory_image_new, etc.
+//   wasmtime_mprotect, wasmtime_page_size
+//   wasmtime_memory_image_new (returns NULL — unsupported),
+//   wasmtime_memory_image_map_at, wasmtime_memory_image_free
 //
-// Signals:
-//   wasmtime_init_traps, wasmtime_longjmp, wasmtime_setjmp
+// Trap handling (custom-native-signals):
+//   wasmtime_init_traps — installs signal handlers for SIGILL, SIGSEGV, SIGFPE
 //
-// Sync primitives:
-//   wasmtime_lock_new, wasmtime_lock_lock, wasmtime_lock_unlock,
-//   wasmtime_condvar_new, wasmtime_condvar_wait, wasmtime_condvar_signal, etc.
+// TLS (always required):
+//   wasmtime_tls_get, wasmtime_tls_set — static variable (single-threaded)
+//
+// Sync primitives (custom-sync-primitives):
+//   wasmtime_sync_lock_acquire/release/free — atomic flag
+//   wasmtime_sync_rwlock_read/read_release/write/write_release/free — atomic counter
