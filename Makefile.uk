@@ -1,0 +1,24 @@
+
+################################################################################
+# Library registration
+################################################################################
+$(eval $(call addlib_s,libukwasmtime,$(CONFIG_LIBUKWASMTIME)))
+
+################################################################################
+# Per-library cargo flags: force the unikraft no_std target, build core/alloc.
+################################################################################
+LIBUKWASMTIME_TARGET_JSON := $(LIBUKWASMTIME_BASE)/x86_64-unikraft.json
+
+LIBUKWASMTIME_CARGOFLAGS-y += \
+	--target=$(LIBUKWASMTIME_TARGET_JSON) \
+	-Z build-std=core,alloc \
+	-Z unstable-options \
+	-Z json-target-spec
+
+LIBUKWASMTIME_RUSTCFLAGS-y += \
+	-Zallow-features=alloc_error_handler,allocator_api,concat_idents,bench_black_box,global_asm,try_reserve
+
+################################################################################
+# Sources
+################################################################################
+LIBUKWASMTIME_SRCS-y += $(LIBUKWASMTIME_BASE)/Cargo.toml

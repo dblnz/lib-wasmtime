@@ -1,0 +1,21 @@
+[package]
+name = "lib-ukwasmtime"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+ukrust = { path = "../unikraft-patched/lib/ukrust/" }
+
+[dependencies.wasmtime]
+version = "45.0.0"
+default-features = false
+features = [
+    "runtime",
+    "component-model",
+    "custom-virtual-memory",
+    "custom-native-signals",
+    "custom-sync-primitives",
+]

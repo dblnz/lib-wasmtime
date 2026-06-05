@@ -1,0 +1,4 @@
+name        := "ukwasmtime"
+description := "A fast and secure runtime for WebAssembly (wasmtime wrapper)."
+homepage    := "https://wasmtime.dev/"
+license     := "Apache-2.0"

@@ -1,0 +1,17 @@
+menuconfig LIBUKWASMTIME
+	bool "ukwasmtime: WebAssembly runtime (wasmtime)"
+	depends on ARCH_X86_64
+	select LIBUKCARGO
+	select LIBMUSL
+	default n
+	help
+	  Unikraft library wrapping wasmtime for running precompiled
+	  WebAssembly modules and components in no_std mode.
+
+if LIBUKWASMTIME
+
+config LIBUKWASMTIME_COMPONENT_MODEL
+	bool "Enable WebAssembly Component Model support"
+	default y
+
+endif
