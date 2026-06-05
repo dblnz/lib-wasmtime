@@ -11,7 +11,6 @@
 
 #include <errno.h>
 #include <signal.h>
-#include <stdatomic.h>
 #include <stdint.h>
 #include <string.h>
 #include <sys/mman.h>
@@ -173,13 +172,13 @@ void wasmtime_tls_set(uint8_t *ptr) {
 // Lock: use the uintptr_t directly as a flag (0 = unlocked, 1 = locked)
 
 void wasmtime_sync_lock_acquire(uintptr_t *lock) {
-    // In single-threaded Unikraft, this is essentially a no-op.
-    // The atomic store provides a memory barrier for safety.
-    atomic_store((atomic_uintptr_t *)lock, 1);
+    uintptr_t one = 1;
+    __atomic_store(lock, &one, __ATOMIC_SEQ_CST);
 }
 
 void wasmtime_sync_lock_release(uintptr_t *lock) {
-    atomic_store((atomic_uintptr_t *)lock, 0);
+    uintptr_t zero = 0;
+    __atomic_store(lock, &zero, __ATOMIC_SEQ_CST);
 }
 
 void wasmtime_sync_lock_free(uintptr_t *lock) {
@@ -191,20 +190,21 @@ void wasmtime_sync_lock_free(uintptr_t *lock) {
 // For single-threaded, we just track the state minimally.
 
 void wasmtime_sync_rwlock_read(uintptr_t *lock) {
-    atomic_fetch_add((atomic_uintptr_t *)lock, 1);
+    __atomic_fetch_add(lock, 1, __ATOMIC_SEQ_CST);
 }
 
 void wasmtime_sync_rwlock_read_release(uintptr_t *lock) {
-    atomic_fetch_sub((atomic_uintptr_t *)lock, 1);
+    __atomic_fetch_sub(lock, 1, __ATOMIC_SEQ_CST);
 }
 
 void wasmtime_sync_rwlock_write(uintptr_t *lock) {
-    // In single-threaded mode, just mark as write-locked
-    atomic_store((atomic_uintptr_t *)lock, (uintptr_t)-1);
+    uintptr_t val = (uintptr_t)-1;
+    __atomic_store(lock, &val, __ATOMIC_SEQ_CST);
 }
 
 void wasmtime_sync_rwlock_write_release(uintptr_t *lock) {
-    atomic_store((atomic_uintptr_t *)lock, 0);
+    uintptr_t zero = 0;
+    __atomic_store(lock, &zero, __ATOMIC_SEQ_CST);
 }
 
 void wasmtime_sync_rwlock_free(uintptr_t *lock) {

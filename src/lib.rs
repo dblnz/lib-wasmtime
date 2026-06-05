@@ -1,7 +1,5 @@
 #![no_std]
 
-extern crate alloc;
-
 pub use ukrust;
 pub use wasmtime;
 
@@ -12,8 +10,8 @@ pub use error::Error;
 pub use wasmtime::component::Component;
 pub use wasmtime::{Engine, Linker, Module, Store};
 
-extern "C" {
-    fn printf(fmt: *const core::ffi::c_char, ...) -> core::ffi::c_int;
+unsafe extern "C" {
+    safe fn printf(fmt: *const core::ffi::c_char, ...) -> core::ffi::c_int;
 }
 
 /// Create a wasmtime Engine configured for precompiled-only (no_std) execution.
@@ -52,9 +50,7 @@ pub fn run_module(precompiled: &[u8]) -> Result<(), Error> {
     let mut linker = Linker::<()>::new(&engine);
     linker
         .func_wrap("env", "print_i32", |val: i32| {
-            unsafe {
-                printf(b"wasm> %d\n\0".as_ptr() as *const core::ffi::c_char, val);
-            }
+            printf(b"wasm> %d\n\0".as_ptr() as *const core::ffi::c_char, val);
         })
         .map_err(|e| Error::Wasmtime(e))?;
 
