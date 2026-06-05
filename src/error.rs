@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use core::fmt;
 
 /// Errors returned by lib-ukwasmtime.
