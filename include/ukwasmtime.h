@@ -74,6 +74,35 @@ int ukwasmtime_run_module(const uint8_t *data, size_t len);
  */
 int ukwasmtime_run_component(const uint8_t *data, size_t len);
 
+/*
+ * Load a precompiled component (.cwasm bytes) into an engine.
+ * Returns an opaque component handle, or NULL on failure.
+ */
+void *ukwasmtime_component_load(void *engine, const uint8_t *data, size_t len);
+
+/*
+ * Destroy a component loaded with ukwasmtime_component_load().
+ */
+void ukwasmtime_component_destroy(void *component);
+
+/*
+ * Call a component's exported function with signature (s32, s32) -> s32.
+ * The result is stored in *out.
+ * Returns 0 on success, -1 on failure.
+ */
+int ukwasmtime_component_call_ii_i(void *engine, void *component,
+				   const char *func_name,
+				   int32_t a, int32_t b, int32_t *out);
+
+/*
+ * Call a component's exported function with signature (s32) -> s32.
+ * The result is stored in *out.
+ * Returns 0 on success, -1 on failure.
+ */
+int ukwasmtime_component_call_i_i(void *engine, void *component,
+				  const char *func_name,
+				  int32_t a, int32_t *out);
+
 #ifdef __cplusplus
 }
 #endif

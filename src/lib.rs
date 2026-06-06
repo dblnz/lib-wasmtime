@@ -19,8 +19,7 @@ unsafe extern "C" {
 /// Create a wasmtime Engine configured for precompiled-only (no_std) execution.
 pub fn create_engine() -> Result<Engine, Error> {
     let mut config = wasmtime::Config::new();
-    // When compiling disable all flags
-    // It is not needed to disable here
+    config.wasm_component_model(true);
     Engine::new(&config).map_err(|_| Error::EngineCreation)
 }
 
@@ -107,6 +106,11 @@ struct EngineHandle {
 /// Opaque handle to a loaded Module.
 struct ModuleHandle {
     module: Module,
+}
+
+/// Opaque handle to a loaded Component.
+struct ComponentHandle {
+    component: Component,
 }
 
 /// Create a new wasmtime engine. Returns an opaque pointer, or NULL on failure.
@@ -293,4 +297,183 @@ pub extern "C" fn ukwasmtime_run_component(data: *const u8, len: usize) -> c_int
     }
     let bytes = unsafe { core::slice::from_raw_parts(data, len) };
     if run_component(bytes).is_ok() { 0 } else { -1 }
+}
+
+// ============================================================================
+// Component C API
+// ============================================================================
+
+/// Load a precompiled component (.cwasm bytes) into an engine.
+/// Returns an opaque component handle, or NULL on failure.
+#[unsafe(no_mangle)]
+pub extern "C" fn ukwasmtime_component_load(
+    engine: *mut c_void,
+    data: *const u8,
+    len: usize,
+) -> *mut c_void {
+    if engine.is_null() || data.is_null() {
+        return core::ptr::null_mut();
+    }
+    let eh = unsafe { &*(engine as *const EngineHandle) };
+    let bytes = unsafe { core::slice::from_raw_parts(data, len) };
+
+    match unsafe { Component::deserialize(&eh.engine, bytes) } {
+        Ok(component) => {
+            let handle = alloc::boxed::Box::new(ComponentHandle { component });
+            alloc::boxed::Box::into_raw(handle) as *mut c_void
+        }
+        Err(e) => {
+            let msg = alloc::format!("{:?}", e);
+            printf(
+                b"ERROR [ukwasmtime]: component deserialize failed: %.*s\n\0".as_ptr()
+                    as *const c_char,
+                msg.len() as c_int,
+                msg.as_ptr() as *const c_char,
+            );
+            core::ptr::null_mut()
+        }
+    }
+}
+
+/// Destroy a component loaded with `ukwasmtime_component_load`.
+#[unsafe(no_mangle)]
+pub extern "C" fn ukwasmtime_component_destroy(component: *mut c_void) {
+    if !component.is_null() {
+        unsafe {
+            let _ = alloc::boxed::Box::from_raw(component as *mut ComponentHandle);
+        }
+    }
+}
+
+/// Instantiate a component and call an exported function: (s32, s32) -> s32.
+/// Returns 0 on success, -1 on failure.
+#[unsafe(no_mangle)]
+pub extern "C" fn ukwasmtime_component_call_ii_i(
+    engine: *mut c_void,
+    component: *mut c_void,
+    func_name: *const c_char,
+    a: i32,
+    b: i32,
+    out: *mut i32,
+) -> c_int {
+    if engine.is_null() || component.is_null() || func_name.is_null() || out.is_null() {
+        return -1;
+    }
+    let eh = unsafe { &*(engine as *const EngineHandle) };
+    let ch = unsafe { &*(component as *const ComponentHandle) };
+
+    let name = unsafe {
+        let mut len = 0usize;
+        let mut p = func_name;
+        while *p != 0 {
+            len += 1;
+            p = p.add(1);
+        }
+        core::str::from_utf8_unchecked(core::slice::from_raw_parts(func_name as *const u8, len))
+    };
+
+    let mut store: Store<()> = Store::new(&eh.engine, ());
+    let linker = wasmtime::component::Linker::<()>::new(&eh.engine);
+
+    let instance = match linker.instantiate(&mut store, &ch.component) {
+        Ok(i) => i,
+        Err(e) => {
+            let msg = alloc::format!("{:?}", e);
+            printf(
+                b"ERROR [ukwasmtime]: component instantiate failed: %.*s\n\0".as_ptr()
+                    as *const c_char,
+                msg.len() as c_int,
+                msg.as_ptr() as *const c_char,
+            );
+            return -1;
+        }
+    };
+
+    let func = match instance.get_typed_func::<(i32, i32), (i32,)>(&mut store, name) {
+        Ok(f) => f,
+        Err(e) => {
+            let msg = alloc::format!("{:?}", e);
+            printf(
+                b"ERROR [ukwasmtime]: component get func failed: %.*s\n\0".as_ptr()
+                    as *const c_char,
+                msg.len() as c_int,
+                msg.as_ptr() as *const c_char,
+            );
+            return -1;
+        }
+    };
+
+    match func.call(&mut store, (a, b)) {
+        Ok((result,)) => {
+            unsafe { *out = result };
+            0
+        }
+        Err(_) => -1,
+    }
+}
+
+/// Instantiate a component and call an exported function: (s32) -> s32.
+/// Returns 0 on success, -1 on failure.
+#[unsafe(no_mangle)]
+pub extern "C" fn ukwasmtime_component_call_i_i(
+    engine: *mut c_void,
+    component: *mut c_void,
+    func_name: *const c_char,
+    a: i32,
+    out: *mut i32,
+) -> c_int {
+    if engine.is_null() || component.is_null() || func_name.is_null() || out.is_null() {
+        return -1;
+    }
+    let eh = unsafe { &*(engine as *const EngineHandle) };
+    let ch = unsafe { &*(component as *const ComponentHandle) };
+
+    let name = unsafe {
+        let mut len = 0usize;
+        let mut p = func_name;
+        while *p != 0 {
+            len += 1;
+            p = p.add(1);
+        }
+        core::str::from_utf8_unchecked(core::slice::from_raw_parts(func_name as *const u8, len))
+    };
+
+    let mut store: Store<()> = Store::new(&eh.engine, ());
+    let linker = wasmtime::component::Linker::<()>::new(&eh.engine);
+
+    let instance = match linker.instantiate(&mut store, &ch.component) {
+        Ok(i) => i,
+        Err(e) => {
+            let msg = alloc::format!("{:?}", e);
+            printf(
+                b"ERROR [ukwasmtime]: component instantiate failed: %.*s\n\0".as_ptr()
+                    as *const c_char,
+                msg.len() as c_int,
+                msg.as_ptr() as *const c_char,
+            );
+            return -1;
+        }
+    };
+
+    let func = match instance.get_typed_func::<(i32,), (i32,)>(&mut store, name) {
+        Ok(f) => f,
+        Err(e) => {
+            let msg = alloc::format!("{:?}", e);
+            printf(
+                b"ERROR [ukwasmtime]: component get func failed: %.*s\n\0".as_ptr()
+                    as *const c_char,
+                msg.len() as c_int,
+                msg.as_ptr() as *const c_char,
+            );
+            return -1;
+        }
+    };
+
+    match func.call(&mut store, (a,)) {
+        Ok((result,)) => {
+            unsafe { *out = result };
+            0
+        }
+        Err(_) => -1,
+    }
 }
