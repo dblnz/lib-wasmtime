@@ -1,5 +1,12 @@
 #![no_std]
 
+// Required when lib-ukwasmtime is built as a plain cargo dependency (e.g. by
+// app-ukwasmtime), which does not pass `--extern alloc`. The standalone ukcargo
+// build does pass it, making this declaration redundant there, so silence the
+// rust-2018-idioms `unused_extern_crates` lint.
+#[allow(unused_extern_crates)]
+extern crate alloc;
+
 pub use ukrust;
 pub use wasmtime;
 
@@ -92,6 +99,30 @@ pub fn run_component(precompiled: &[u8]) -> Result<(), Error> {
         .map_err(|e| Error::Wasmtime(e))?;
 
     Ok(())
+}
+
+/// Instantiate a precompiled module and call an exported function with the
+/// signature `(i32, i32) -> i32`.
+pub fn call_module_ii_i(
+    precompiled: &[u8],
+    func_name: &str,
+    a: i32,
+    b: i32,
+) -> Result<i32, Error> {
+    let engine = create_engine()?;
+    let module = load_module(&engine, precompiled)?;
+    let mut store: Store<()> = Store::new(&engine, ());
+
+    let linker = Linker::<()>::new(&engine);
+    let instance = linker
+        .instantiate(&mut store, &module)
+        .map_err(|e| Error::Wasmtime(e))?;
+
+    let func = instance
+        .get_typed_func::<(i32, i32), i32>(&mut store, func_name)
+        .map_err(|_| Error::Execution)?;
+
+    func.call(&mut store, (a, b)).map_err(|e| Error::Wasmtime(e))
 }
 
 // ============================================================================
