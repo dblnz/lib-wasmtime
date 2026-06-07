@@ -7,7 +7,7 @@ edition = "2024"
 crate-type = ["staticlib", "rlib"]
 
 [dependencies]
-ukrust = { path = "../unikraft-patched/lib/ukrust/" }
+ukrust = { path = "../../unikraft/lib/ukrust/" }
 sha2 = { version = "0.10", default-features = false, features = ["force-soft"] }
 
 [dependencies.wasmtime]
