@@ -2,29 +2,34 @@
 ################################################################################
 # Library registration
 ################################################################################
-$(eval $(call addlib_s,libukwasmtime,$(CONFIG_LIBUKWASMTIME)))
+# Registered as "ukwasmtime" (without the leading "lib"): lib-rust's
+# cargotoalib prepends "lib" to the library name, so this yields the cargo
+# archive libukwasmtime.a (registering "libukwasmtime" would double the
+# prefix into liblibukwasmtime.a). The menuconfig switch stays
+# CONFIG_LIBUKWASMTIME, hence the make-var prefix here is UKWASMTIME_.
+$(eval $(call addlib_s,ukwasmtime,$(CONFIG_LIBUKWASMTIME)))
 
 ################################################################################
 # Per-library cargo flags: force the unikraft no_std target, build core/alloc.
 ################################################################################
-LIBUKWASMTIME_TARGET_JSON := $(LIBUKWASMTIME_BASE)/x86_64-unikraft.json
+UKWASMTIME_TARGET_JSON := $(UKWASMTIME_BASE)/x86_64-unikraft.json
 
-LIBUKWASMTIME_CARGOFLAGS-y += \
-	--target=$(LIBUKWASMTIME_TARGET_JSON) \
+UKWASMTIME_CARGOFLAGS-y += \
+	--target=$(UKWASMTIME_TARGET_JSON) \
 	-Z build-std=core,alloc \
 	-Z unstable-options \
 	-Z json-target-spec
 
-LIBUKWASMTIME_RUSTCFLAGS-y += \
+UKWASMTIME_RUSTCFLAGS-y += \
 	-Zallow-features=alloc_error_handler,allocator_api,concat_idents,bench_black_box,global_asm,try_reserve
 
 ################################################################################
 # C include path for wasmtime-platform.h and ukwasmtime.h (exported globally)
 ################################################################################
-CINCLUDES-y += -I$(LIBUKWASMTIME_BASE)/include
+CINCLUDES-y += -I$(UKWASMTIME_BASE)/include
 
 ################################################################################
 # Sources
 ################################################################################
-LIBUKWASMTIME_SRCS-y += $(LIBUKWASMTIME_BASE)/Cargo.toml
-LIBUKWASMTIME_SRCS-y += $(LIBUKWASMTIME_BASE)/platform.c
+UKWASMTIME_SRCS-y += $(UKWASMTIME_BASE)/Cargo.toml
+UKWASMTIME_SRCS-y += $(UKWASMTIME_BASE)/platform.c
