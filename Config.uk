@@ -10,7 +10,7 @@ menuconfig LIBUKWASMTIME
 
 if LIBUKWASMTIME
 
-config LIUKBWASMTIME_COMPONENT_MODEL
+config LIBUKWASMTIME_COMPONENT_MODEL
 	bool "Enable WebAssembly Component Model support"
 	default y
 
