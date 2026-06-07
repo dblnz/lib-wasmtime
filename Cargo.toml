@@ -1,5 +1,5 @@
 [package]
-name = "lib-ukwasmtime"
+name = "ukwasmtime"
 version = "0.1.0"
 edition = "2024"
 
