@@ -36,6 +36,29 @@ unsafe extern "C" {
 pub fn create_engine() -> Result<Engine, Error> {
     let mut config = wasmtime::Config::new();
     config.wasm_component_model(true);
+    // Configure wasmtime for the embedded memory model that the unikraft
+    // wasmtime port (`platform.c`) can actually support. wasmtime's default
+    // x86_64 tunables reserve a 4 GiB linear-memory region (+2 GiB grow-into
+    // area) and rely on guard pages + faults for bounds checks. The port's
+    // `wasmtime_mmap_new` is a thin wrapper over real unikraft
+    // `mmap(MAP_ANONYMOUS)`, which cannot satisfy a multi-GiB reservation, so
+    // instantiation fails with the defaults. (Contrast hyperlight-wasm, whose
+    // mmap shim is a lazy, demand-paged allocator over a huge guest address
+    // space and therefore runs wasmtime's defaults unchanged.) Each setting
+    // below corresponds to a capability the port lacks:
+    //   * no large mmap reservation  -> reservation(0) + small grow area
+    //   * CoW images unsupported (`wasmtime_memory_image_new` returns NULL)
+    //     -> memory_init_cow(false)
+    //   * don't depend on unikraft delivering guard-page faults to the port's
+    //     signal handler -> explicit bounds checks: signals_based_traps(false)
+    //     + memory_guard_size(0)
+    // These must match the `-O` flags `wasm/build.sh` passes to `wasmtime
+    // compile`, otherwise precompiled `.cwasm` modules fail to instantiate.
+    config.signals_based_traps(false);
+    config.memory_reservation(0);
+    config.memory_guard_size(0);
+    config.memory_reservation_for_growth(1 << 20);
+    config.memory_init_cow(false);
     Engine::new(&config).map_err(|_| Error::EngineCreation)
 }
 
