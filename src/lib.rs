@@ -231,6 +231,38 @@ impl Instance {
         }
     }
 
+    /// Write `data` into the default linear memory at byte `offset`.
+    /// Only supported for module instances (components have no raw memory).
+    pub fn memory_write(&mut self, offset: usize, data: &[u8]) -> Result<(), Error> {
+        match &mut self.inner {
+            Inner::Module { store, instance } => {
+                let mem = instance
+                    .get_memory(&mut *store, "memory")
+                    .ok_or(Error::Execution)?;
+                mem.write(&mut *store, offset, data)
+                    .map_err(|_| Error::Execution)
+            }
+            Inner::Component { .. } => Err(Error::Execution),
+        }
+    }
+
+    /// Read `len` bytes from the default linear memory starting at `offset`.
+    /// Only supported for module instances.
+    pub fn memory_read(&mut self, offset: usize, len: usize) -> Result<Vec<u8>, Error> {
+        match &mut self.inner {
+            Inner::Module { store, instance } => {
+                let mem = instance
+                    .get_memory(&mut *store, "memory")
+                    .ok_or(Error::Execution)?;
+                let mut buf = alloc::vec![0u8; len];
+                mem.read(&*store, offset, &mut buf)
+                    .map_err(|_| Error::Execution)?;
+                Ok(buf)
+            }
+            Inner::Component { .. } => Err(Error::Execution),
+        }
+    }
+
     /// Statically-typed call for module instances, reusing wasmtime's
     /// `WasmParams`/`WasmResults` so `P` and `R` can be tuples of scalars. This
     /// is the zero-conversion fast path for Rust callers; it returns
