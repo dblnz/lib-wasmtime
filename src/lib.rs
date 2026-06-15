@@ -231,6 +231,68 @@ impl Instance {
         }
     }
 
+    /// Call a component export that takes and returns WIT `string` values.
+    ///
+    /// This is the component-model counterpart to [`call_dyn`], which only
+    /// handles scalar values. It resolves `func` either as a top-level
+    /// component export (when `interface` is `None`) or as a function nested
+    /// inside the exported `interface` instance (e.g. `"example:functions/handler"`),
+    /// passes each entry of `args` as a `string`, and returns the function's
+    /// single `string` result.
+    ///
+    /// Returns [`Error::Execution`] for module instances or when the export
+    /// cannot be resolved, and [`Error::Type`] if the result is not a string.
+    ///
+    /// [`call_dyn`]: Instance::call_dyn
+    pub fn call_component_strings(
+        &mut self,
+        interface: Option<&str>,
+        func: &str,
+        args: &[&str],
+    ) -> Result<alloc::string::String, Error> {
+        match &mut self.inner {
+            Inner::Component { store, instance } => {
+                // Resolve the export index, descending into the exported
+                // interface instance first when one is named.
+                let func_index = match interface {
+                    Some(iface) => {
+                        let iface_index = instance
+                            .get_export_index(&mut *store, None, iface)
+                            .ok_or(Error::Execution)?;
+                        instance
+                            .get_export_index(&mut *store, Some(&iface_index), func)
+                            .ok_or(Error::Execution)?
+                    }
+                    None => instance
+                        .get_export_index(&mut *store, None, func)
+                        .ok_or(Error::Execution)?,
+                };
+
+                let f = instance
+                    .get_func(&mut *store, &func_index)
+                    .ok_or(Error::Execution)?;
+
+                let params: Vec<ComponentVal> = args
+                    .iter()
+                    .map(|s| ComponentVal::String(alloc::string::String::from(*s)))
+                    .collect();
+
+                let nresults = f.ty(&*store).results().len();
+                let mut results = alloc::vec![ComponentVal::Bool(false); nresults];
+                // `Func::call` lifts results into owned host values and runs the
+                // component's post-return, so the returned String stays valid.
+                f.call(&mut *store, &params, &mut results)
+                    .map_err(Error::Wasmtime)?;
+
+                match results.into_iter().next() {
+                    Some(ComponentVal::String(s)) => Ok(s),
+                    _ => Err(Error::Type),
+                }
+            }
+            Inner::Module { .. } => Err(Error::Execution),
+        }
+    }
+
     /// Write `data` into the default linear memory at byte `offset`.
     /// Only supported for module instances (components have no raw memory).
     pub fn memory_write(&mut self, offset: usize, data: &[u8]) -> Result<(), Error> {
